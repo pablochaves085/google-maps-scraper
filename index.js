@@ -45,31 +45,34 @@ app.get("/search", async (req, res) => {
     await page.waitForSelector('.Nv2PK', { timeout: 60000 });
 
     const results = await page.$$eval('.Nv2PK', (cards) => {
-      return cards.map((card) => {
-        const name = card.querySelector('.qBF1Pd')?.textContent || '';
+  return cards.map((card) => {
+    const name = card.querySelector('.qBF1Pd')?.textContent?.trim() || '';
 
-        const endereco = card.querySelector('.W4Efsd span:nth-child(2)')?.textContent || '';
-        const especialidades = card.querySelector('.W4Efsd span:nth-child(1)')?.textContent || '';
-        const rating = card.querySelector('.MW4etd span')?.textContent || '';
-        const reviews = ''; // não aparece nos cards, só após clicar
+    const infoLines = card.querySelectorAll('.W4Efsd span');
+    const especialidades = infoLines[0]?.textContent?.trim() || '';
+    const endereco = infoLines[1]?.textContent?.trim() || '';
 
-        const telefoneEl = card.querySelector('[aria-label^="Ligar para"] span');
-        const telefone = telefoneEl?.textContent?.trim() || '';
+    const rating = card.querySelector('.MW4etd span')?.textContent?.trim() || '';
+    const reviews = ''; // deixar vazio por padrão
 
-        const link = card.querySelector('a[aria-label^="Site"]');
-        const website = link?.href || '';
+    const telefoneEl = card.querySelector('[aria-label^="Ligar para"] span');
+    const telefone = telefoneEl?.textContent?.trim() || '';
 
-        return {
-          name,
-          endereco,
-          telefone,
-          rating,
-          reviews,
-          website,
-          especialidades
-        };
-      });
-    });
+    const link = card.querySelector('a[aria-label^="Site"]');
+    const website = link?.href || '';
+
+    return {
+      name,
+      endereco,
+      telefone,
+      rating,
+      reviews,
+      website,
+      especialidades
+    };
+  });
+});
+
 
     await browser.close();
     return res.json(results);
@@ -82,3 +85,4 @@ app.get("/search", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+
