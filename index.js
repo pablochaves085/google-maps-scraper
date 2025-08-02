@@ -32,34 +32,33 @@ app.get("/search", async (req, res) => {
 
     console.log(`🔍 Buscando: ${searchTerm}`);
 
-    await page.waitForTimeout(5000); // espera carregar
+    // Espera o carregamento inicial da página
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // rolar até o final da lista de resultados
+    // Rolar a página até o fim dos resultados
     let prevHeight;
     while (true) {
       prevHeight = await page.evaluate("document.body.scrollHeight");
       await page.evaluate("window.scrollBy(0, window.innerHeight)");
-      await page.waitForTimeout(3000);
+      await new Promise(resolve => setTimeout(resolve, 3000));
       const newHeight = await page.evaluate("document.body.scrollHeight");
       if (newHeight === prevHeight) break;
     }
 
     await page.waitForSelector('.Nv2PK', { timeout: 60000 });
 
-    // extrai os blocos de resultado
     const results = await page.$$eval('.Nv2PK', cards => {
       return cards.map(card => {
         const name = card.querySelector('.qBF1Pd')?.textContent || '';
         const endereco = card.querySelector('.rllt__details div:nth-child(2)')?.textContent || '';
         const telefone = card.querySelector("[data-tooltip='Copiar número de telefone']")?.textContent || '';
         const rating = card.querySelector('.MW4etd span')?.textContent || '';
-        const reviews = ''; // Pode ser extraído depois
+        const reviews = ''; // Se conseguir no futuro, inclua aqui
         const websiteBtn = Array.from(card.querySelectorAll('[role="button"]')).find(el =>
-          el.textContent?.includes("Site")
+          el.textContent?.toLowerCase().includes("site")
         );
-        const website = websiteBtn?.getAttribute('aria-label')?.includes('site') ? websiteBtn?.dataset?.url || '' : '';
+        const website = websiteBtn?.dataset?.url || '';
 
-        // Tenta pegar as especialidades (segunda linha de texto, geralmente)
         const especialidades = card.querySelector('.rllt__details div:nth-child(3)')?.textContent || '';
 
         return {
@@ -78,7 +77,8 @@ app.get("/search", async (req, res) => {
 
     return res.json(results);
   } catch (error) {
-    console.error("❌ Erro ao processar busca:", error);
+    console.error("❌ Erro ao processar busca:");
+    console.error(error.stack || error.message || error);
     return res.status(500).json({ error: "Erro ao processar busca." });
   }
 });
