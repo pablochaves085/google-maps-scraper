@@ -3,14 +3,13 @@ const puppeteer = require("puppeteer");
 
 const app = express();
 
-// Rota raiz
 app.get("/", (req, res) => {
-  res.send("API do Google Maps Scraper em funcionamento.");
+  res.send("API do Google Maps Scraper está rodando.");
 });
 
-// Rota de busca
 app.get("/search", async (req, res) => {
   const searchTerm = req.query.term;
+
   if (!searchTerm) {
     return res.status(400).json({ error: "Parâmetro 'term' é obrigatório." });
   }
@@ -31,9 +30,11 @@ app.get("/search", async (req, res) => {
     const url = `https://www.google.com/maps/search/${encodeURIComponent(searchTerm)}`;
     await page.goto(url, { waitUntil: "networkidle2" });
 
-    await page.waitForTimeout(5000); // Espera inicial
+    console.log(`🔍 Buscando: ${searchTerm}`);
 
-    // Desce a página pra carregar resultados
+    await page.waitForTimeout(5000); // espera carregar
+
+    // rolar até o final da lista de resultados
     let prevHeight;
     while (true) {
       prevHeight = await page.evaluate("document.body.scrollHeight");
@@ -43,36 +44,44 @@ app.get("/search", async (req, res) => {
       if (newHeight === prevHeight) break;
     }
 
-    // Espera blocos de resultado aparecerem
     await page.waitForSelector('.Nv2PK', { timeout: 60000 });
 
+    // extrai os blocos de resultado
     const results = await page.$$eval('.Nv2PK', cards => {
       return cards.map(card => {
-        const nome_empresa = card.querySelector('.qBF1Pd')?.textContent || '';
-        const telefone = card.querySelector("[data-tooltip='Copiar número de telefone']")?.textContent || '';
-        const websiteBtn = Array.from(card.querySelectorAll('[role="button"]')).find(el => el.textContent.includes("Site"));
-        const website = websiteBtn?.getAttribute('aria-label')?.includes('site') ? websiteBtn?.dataset?.url || '' : '';
-        const nota = card.querySelector('.MW4etd span')?.textContent || '';
+        const name = card.querySelector('.qBF1Pd')?.textContent || '';
         const endereco = card.querySelector('.rllt__details div:nth-child(2)')?.textContent || '';
+        const telefone = card.querySelector("[data-tooltip='Copiar número de telefone']")?.textContent || '';
+        const rating = card.querySelector('.MW4etd span')?.textContent || '';
+        const reviews = ''; // Pode ser extraído depois
+        const websiteBtn = Array.from(card.querySelectorAll('[role="button"]')).find(el =>
+          el.textContent?.includes("Site")
+        );
+        const website = websiteBtn?.getAttribute('aria-label')?.includes('site') ? websiteBtn?.dataset?.url || '' : '';
+
+        // Tenta pegar as especialidades (segunda linha de texto, geralmente)
+        const especialidades = card.querySelector('.rllt__details div:nth-child(3)')?.textContent || '';
 
         return {
-          nome_empresa,
+          name,
+          endereco,
           telefone,
+          rating,
+          reviews,
           website,
-          nota,
-          endereco
+          especialidades
         };
       });
     });
 
     await browser.close();
 
-    res.json(results);
+    return res.json(results);
   } catch (error) {
-    console.error("Erro:", error);
-    res.status(500).json({ error: "Erro ao processar busca." });
+    console.error("❌ Erro ao processar busca:", error);
+    return res.status(500).json({ error: "Erro ao processar busca." });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
