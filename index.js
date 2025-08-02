@@ -44,20 +44,25 @@ app.get("/search", async (req, res) => {
 
     await page.waitForSelector('.Nv2PK', { timeout: 60000 });
 
-    const results = await page.$$eval('.Nv2PK', (cards) => {
+   const results = await page.$$eval('.Nv2PK', (cards) => {
   return cards.map((card) => {
     const name = card.querySelector('.qBF1Pd')?.textContent?.trim() || '';
 
-    const infoLines = card.querySelectorAll('.W4Efsd span');
-    const especialidades = infoLines[0]?.textContent?.trim() || '';
-    const endereco = infoLines[1]?.textContent?.trim() || '';
+    // ⚠️ Corrige os dados extras (especialidades e endereço)
+    const infoBlock = card.querySelector('.W4Efsd.tPgKwe');
+    const spans = infoBlock ? infoBlock.querySelectorAll('span') : [];
+    const especialidades = spans[0]?.textContent?.trim() || '';
+    const endereco = spans[1]?.textContent?.trim() || '';
 
+    // Estrelas
     const rating = card.querySelector('.MW4etd span')?.textContent?.trim() || '';
-    const reviews = ''; // deixar vazio por padrão
+    const reviews = ''; // Placeholder
 
+    // Telefone (caso esteja em lista expandida ou detalhe)
     const telefoneEl = card.querySelector('[aria-label^="Ligar para"] span');
     const telefone = telefoneEl?.textContent?.trim() || '';
 
+    // Site
     const link = card.querySelector('a[aria-label^="Site"]');
     const website = link?.href || '';
 
@@ -74,6 +79,7 @@ app.get("/search", async (req, res) => {
 });
 
 
+
     await browser.close();
     return res.json(results);
   } catch (error) {
@@ -85,4 +91,5 @@ app.get("/search", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+
 
