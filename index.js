@@ -4,7 +4,7 @@ const puppeteer = require("puppeteer");
 const app = express();
 
 app.get("/", (req, res) => {
-  res.send("API do Google Maps Scraper está rodando.");
+  res.send("API do Google Maps Scraper está rodando com todos os campos.");
 });
 
 app.get("/search", async (req, res) => {
@@ -31,11 +31,8 @@ app.get("/search", async (req, res) => {
     await page.goto(url, { waitUntil: "networkidle2" });
 
     console.log(`🔍 Buscando: ${searchTerm}`);
-
-    // Espera o carregamento inicial da página
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // Rolar a página até o fim dos resultados
     let prevHeight;
     while (true) {
       prevHeight = await page.evaluate("document.body.scrollHeight");
@@ -47,19 +44,20 @@ app.get("/search", async (req, res) => {
 
     await page.waitForSelector('.Nv2PK', { timeout: 60000 });
 
-    const results = await page.$$eval('.Nv2PK', cards => {
-      return cards.map(card => {
+    const results = await page.$$eval('.Nv2PK', (cards) => {
+      return cards.map((card) => {
         const name = card.querySelector('.qBF1Pd')?.textContent || '';
-        const endereco = card.querySelector('.rllt__details div:nth-child(2)')?.textContent || '';
-        const telefone = card.querySelector("[data-tooltip='Copiar número de telefone']")?.textContent || '';
-        const rating = card.querySelector('.MW4etd span')?.textContent || '';
-        const reviews = ''; // Se conseguir no futuro, inclua aqui
-        const websiteBtn = Array.from(card.querySelectorAll('[role="button"]')).find(el =>
-          el.textContent?.toLowerCase().includes("site")
-        );
-        const website = websiteBtn?.dataset?.url || '';
 
-        const especialidades = card.querySelector('.rllt__details div:nth-child(3)')?.textContent || '';
+        const endereco = card.querySelector('.W4Efsd span:nth-child(2)')?.textContent || '';
+        const especialidades = card.querySelector('.W4Efsd span:nth-child(1)')?.textContent || '';
+        const rating = card.querySelector('.MW4etd span')?.textContent || '';
+        const reviews = ''; // não aparece nos cards, só após clicar
+
+        const telefoneEl = card.querySelector('[aria-label^="Ligar para"] span');
+        const telefone = telefoneEl?.textContent?.trim() || '';
+
+        const link = card.querySelector('a[aria-label^="Site"]');
+        const website = link?.href || '';
 
         return {
           name,
@@ -74,7 +72,6 @@ app.get("/search", async (req, res) => {
     });
 
     await browser.close();
-
     return res.json(results);
   } catch (error) {
     console.error("❌ Erro ao processar busca:");
